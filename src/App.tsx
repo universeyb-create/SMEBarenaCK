@@ -974,7 +974,7 @@ export default function App() {
                           <h2 className="text-md font-black text-white tracking-wider">스맵의 아레나 CK 팀 매칭 결과</h2>
                         </div>
                         <div className="text-xs text-zinc-500 font-bold flex items-center gap-1">
-                          <span>OBS BROADCAST SOURCE</span>
+                          <span>LIVE ON</span>
                           <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
                         </div>
                       </div>
@@ -1218,8 +1218,7 @@ export default function App() {
       {/* Footer */}
       <footer className={`border-t border-zinc-900 bg-[#0A0A0E] py-8 mt-12 text-center text-xs text-zinc-600 transition-all ${isObsMode ? 'hidden' : ''}`}>
         <p className="font-semibold text-zinc-500">🏆 스맵의 아레나 CK 팀 뽑기 프로그램 🏆</p>
-        <p className="mt-1">Designed for Professional Broadcast and Twitch/AfreecaTV Stream overlays.</p>
-        <p className="mt-4 text-[10px] text-zinc-700">Copyright © 2026 Smeb CK Team Generator. All Rights Reserved.</p>
+        <p className="mt-4 text-[10px] text-zinc-700">Copyright © 편집노예복덕. All Rights Reserved.</p>
       </footer>
 
     </div>
