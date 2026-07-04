@@ -130,8 +130,12 @@ export default function App() {
     try {
       const data = await listAllAccessRequests();
       setAllRequests(data);
-    } catch (err) {
-      console.error('Failed to load all access requests', err);
+    } catch (err: any) {
+      if (err?.message?.includes('offline') || err?.code === 'unavailable') {
+        console.warn('Firebase is offline. Skipping admin access requests fetch.');
+      } else {
+        console.warn('Failed to load all access requests', err);
+      }
     }
   };
 
@@ -156,8 +160,12 @@ export default function App() {
               setAccessRequest(null);
               setAccessStatus('none');
             }
-          } catch (err) {
-            console.error('Failed to load access request status', err);
+          } catch (err: any) {
+            if (err?.message?.includes('offline') || err?.code === 'unavailable') {
+              console.warn('Firebase is offline. Could not fetch access request status.');
+            } else {
+              console.warn('Failed to load access request status', err);
+            }
             setAccessStatus('none');
           } finally {
             setIsCheckingAccess(false);
@@ -178,8 +186,12 @@ export default function App() {
             setTeams(createEmptyTeams(count));
             setRevealedStatus(createEmptyRevealedStatus(count));
           }
-        } catch (err) {
-          console.error('Failed to load custom participants roster', err);
+        } catch (err: any) {
+          if (err?.message?.includes('offline') || err?.code === 'unavailable') {
+            console.warn('Firebase is offline. Using default players list.');
+          } else {
+            console.warn('Failed to load custom participants roster', err);
+          }
         }
       } else {
         setAccessRequest(null);
@@ -215,8 +227,12 @@ export default function App() {
     try {
       const data = await listDrawHistories();
       setHistoryList(data);
-    } catch (err) {
-      console.error('Error fetching drawing history list', err);
+    } catch (err: any) {
+      if (err?.message?.includes('offline') || err?.code === 'unavailable') {
+        console.warn('Firebase is offline. Skipping history feed load.');
+      } else {
+        console.warn('Error fetching drawing history list', err);
+      }
     }
   };
 
@@ -250,8 +266,12 @@ export default function App() {
       } else {
         alert('존재하지 않거나 삭제된 공유 추첨 결과입니다.');
       }
-    } catch (err) {
-      console.error('Error loading shared draw', err);
+    } catch (err: any) {
+      if (err?.message?.includes('offline') || err?.code === 'unavailable') {
+        console.warn('Firebase is offline. Skipping shared draw loading.');
+      } else {
+        console.warn('Error loading shared draw', err);
+      }
     } finally {
       setIsLoadingShared(false);
     }
@@ -264,7 +284,11 @@ export default function App() {
       await loginWithGoogle();
       loadHistoryList();
     } catch (err: any) {
-      console.error('Google Auth login failed', err);
+      if (err?.code === 'auth/popup-closed-by-user') {
+        console.warn('Google Auth popup closed by user.');
+      } else {
+        console.warn('Google Auth login failed', err);
+      }
       setAuthError({
         code: err?.code || 'unknown',
         message: err?.message || String(err)
@@ -278,7 +302,7 @@ export default function App() {
       await loginAnonymously();
       loadHistoryList();
     } catch (err: any) {
-      console.error('Guest login failed', err);
+      console.warn('Guest login failed', err);
       alert('게스트 로그인에 실패했습니다: ' + (err?.message || err));
     }
   };
@@ -292,7 +316,7 @@ export default function App() {
       setRevealedStatus(createEmptyRevealedStatus(defaultCount));
       setCurrentDrawnTiers({ 1: false, 2: false, 3: false });
     } catch (err) {
-      console.error('Logout failed', err);
+      console.warn('Logout failed', err);
     }
   };
 
@@ -696,6 +720,23 @@ export default function App() {
                     <div className="p-4 bg-zinc-900/60 border border-zinc-800/80 rounded-xl text-[11px] text-zinc-400 text-left leading-relaxed">
                       📌 이용을 원하시면 아래 <span className="text-[#FFD700] font-bold">구글 계정으로 로그인</span>을 진행하신 뒤, 본인의 방송국 및 신청 정보를 입력하여 <span className="text-white font-bold">접속 승인</span>을 신청해주시기 바랍니다.
                     </div>
+                    {authError && (
+                      <div className="p-3 bg-red-950/40 border border-red-500/30 text-red-400 rounded-xl text-xs text-left leading-relaxed font-medium">
+                        <div className="font-bold flex items-center gap-1.5 mb-1 text-red-300">
+                          <Ban size={14} />
+                          로그인 오류 발생 ({authError.code || 'unknown'})
+                        </div>
+                        <p className="text-[11px] mb-2">{authError.message}</p>
+                        <div className="mt-2 text-[10.5px] text-zinc-400 bg-black/40 p-2.5 rounded-lg leading-relaxed">
+                          💡 <span className="text-zinc-200 font-bold">원인 및 해결 방법:</span><br />
+                          1. 브라우저의 <strong className="text-amber-400 font-semibold">팝업 차단 기능</strong>이 켜져 있는지 확인하고 허용해 주세요.<br />
+                          2. 새 도메인으로 배포된 경우 Firebase 콘솔에 도메인을 추가해야 합니다. <strong className="text-indigo-400 font-semibold">Firebase 콘솔 &gt; Authentication &gt; Settings(설정) &gt; Authorized domains(승인된 도메인)</strong> 목록에 아래 도메인을 등록해 주세요:<br />
+                          <code className="block mt-1 p-1 bg-zinc-900 text-[9.5px] text-zinc-300 rounded font-mono break-all select-all select-text border border-zinc-800">
+                            {window.location.hostname}
+                          </code>
+                        </div>
+                      </div>
+                    )}
                     <button
                       onClick={handleLogin}
                       type="button"
