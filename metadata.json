@@ -1,0 +1,8 @@
+{
+  "name": "스맵의 아레나 CK 팀 추첨",
+  "description": "18명의 참가자를 티어별로 공정하게 랜덤 배정하여 6개 팀을 편성하는 스맵의 아레나 CK 전용 팀 추첨 웹페이지입니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

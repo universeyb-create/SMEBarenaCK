@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Default deny rule
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Draw History Collection rules
+    match /draw_histories/{historyId} {
+      allow get: if true; // Public read for sharing
+      allow list: if true; // Anyone can list draw history
+
+      allow create: if isValidId(historyId) 
+                    && incoming().id == historyId
+                    && incoming().userId is string
+                    && incoming().userId.size() <= 128
+                    && (incoming().userId == "guest" || (isSignedIn() && incoming().userId == request.auth.uid))
+                    && incoming().createdAt is string
+                    && incoming().method in ["auto", "step"]
+                    && incoming().teams is list
+                    && incoming().teams.size() == 6;
+
+      allow update, delete: if false; // Immutable draw history
+    }
+
+    // Custom Participants Collection rules
+    match /custom_participants/{userId} {
+      allow get, read: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+                            && isValidId(userId)
+                            && incoming().userId == userId
+                            && incoming().updatedAt is string
+                            && incoming().tier1 is list
+                            && incoming().tier1.size() <= 20
+                            && incoming().tier2 is list
+                            && incoming().tier2.size() <= 20
+                            && incoming().tier3 is list
+                            && incoming().tier3.size() <= 20;
+      allow delete: if isOwner(userId);
+    }
+
+    // Access Requests rules for site permission
+    match /access_requests/{userId} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId || 
+        (request.auth.token.keys().contains('email') && request.auth.token.email == "universeyb@gmail.com")
+      );
+      allow write: if isSignedIn() && (
+        isOwner(userId) || 
+        (request.auth.token.keys().contains('email') && request.auth.token.email == "universeyb@gmail.com")
+      );
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "DrawHistory": {
+      "title": "DrawHistory",
+      "description": "A record of a completed team lottery draw.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the draw." },
+        "userId": { "type": "string", "description": "The creator's user ID or 'guest'." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When this draw was created." },
+        "title": { "type": "string", "description": "The custom title for this drawing." },
+        "method": { "type": "string", "enum": ["auto", "step"], "description": "Draw method used." },
+        "teams": { "type": "array", "description": "List of the 6 generated teams." }
+      },
+      "required": ["id", "userId", "createdAt", "method", "teams"]
+    },
+    "CustomParticipants": {
+      "title": "CustomParticipants",
+      "description": "Customized player tier list for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The owner's user ID." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "When this custom list was last updated." },
+        "tier1": { "type": "array", "description": "Tier 1 players list." },
+        "tier2": { "type": "array", "description": "Tier 2 players list." },
+        "tier3": { "type": "array", "description": "Tier 3 players list." }
+      },
+      "required": ["userId", "updatedAt", "tier1", "tier2", "tier3"]
+    },
+    "AccessRequest": {
+      "title": "AccessRequest",
+      "description": "User permission request for accessing the website.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "note": { "type": "string" },
+        "requestedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "status", "requestedAt"]
+    }
+  },
+  "firestore": {
+    "/draw_histories/{historyId}": {
+      "schema": "DrawHistory",
+      "description": "Collection of saved CK lottery drawings."
+    },
+    "/custom_participants/{userId}": {
+      "schema": "CustomParticipants",
+      "description": "User's customized participant tier lists."
+    },
+    "/access_requests/{userId}": {
+      "schema": "AccessRequest",
+      "description": "Requests from users to access the platform."
+    }
+  }
+}
