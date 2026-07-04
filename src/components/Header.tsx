@@ -36,23 +36,18 @@ export default function Header({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row items-start md:items-end justify-between gap-4">
         
         {/* Logo / Branding */}
-        <div>
-          <div className="text-[#FFD700] text-xs font-black tracking-[0.2em] uppercase mb-1 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 bg-[#FFD700] rounded-full animate-pulse" />
-            아레나 팀 랜덤 드래프트
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-black italic uppercase leading-none tracking-tighter text-white">
-            스맵의 <span className="text-[#FFD700]">아레나 CK</span>
-          </h1>
-          <p className="text-[10px] text-zinc-500 mt-1.5 uppercase tracking-widest font-mono flex items-center gap-1.5">
-            <span>낙타와 함께하는 아레나</span>
-            {hasCustomRoster && (
-              <>
-                <span>•</span>
-                <span className="text-indigo-400 font-bold">커스텀 로스터 활성화됨</span>
-              </>
-            )}
-          </p>
+        <div className="flex flex-col gap-1.5">
+          <img 
+            src="https://postfiles.pstatic.net/MjAyNjA3MDVfNDcg/MDAxNzgzMjAwMzc0MzA3.PMwmzMtH5eO1-JmLg8e2KM9c7KMrR92OpBJB8MJGmugg.8yqg7amoW2n3EMpnd_XwdOD6TIkNacLMvz-BeedAPRwg.PNG/%EB%82%99%ED%95%98.png?type=w966" 
+            alt="아레나 CK 로고" 
+            className="h-14 sm:h-16 w-auto object-contain self-start"
+            referrerPolicy="no-referrer"
+          />
+          {hasCustomRoster && (
+            <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">
+              <span className="text-indigo-400 font-bold">커스텀 로스터 활성화됨</span>
+            </p>
+          )}
         </div>
 
         {/* Toolbar & Controls */}
