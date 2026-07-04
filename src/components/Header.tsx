@@ -37,14 +37,19 @@ export default function Header({
         
         {/* Logo / Branding */}
         <div className="flex flex-col gap-1.5">
-          <img 
-            src="https://postfiles.pstatic.net/MjAyNjA3MDVfNDcg/MDAxNzgzMjAwMzc0MzA3.PMwmzMtH5eO1-JmLg8e2KM9c7KMrR92OpBJB8MJGmugg.8yqg7amoW2n3EMpnd_XwdOD6TIkNacLMvz-BeedAPRwg.PNG/%EB%82%99%ED%95%98.png?type=w966" 
-            alt="아레나 CK 로고" 
-            className="h-14 sm:h-16 w-auto object-contain self-start"
-            referrerPolicy="no-referrer"
-          />
+          <div className="flex items-center gap-3">
+            <img 
+              src="https://postfiles.pstatic.net/MjAyNjA3MDVfNDcg/MDAxNzgzMjAwMzc0MzA3.PMwmzMtH5eO1-JmLg8e2KM9c7KMrR92OpBJB8MJGmugg.8yqg7amoW2n3EMpnd_XwdOD6TIkNacLMvz-BeedAPRwg.PNG/%EB%82%99%ED%95%98.png?type=w966" 
+              alt="아레나 CK 로고" 
+              className="h-14 sm:h-16 w-auto object-contain"
+              referrerPolicy="no-referrer"
+            />
+            <span className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              아레나 CK 팀 드래프트
+            </span>
+          </div>
           {hasCustomRoster && (
-            <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">
+            <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono pl-1">
               <span className="text-indigo-400 font-bold">커스텀 로스터 활성화됨</span>
             </p>
           )}
