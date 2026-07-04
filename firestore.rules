@@ -66,11 +66,11 @@ service cloud.firestore {
     match /access_requests/{userId} {
       allow read: if isSignedIn() && (
         request.auth.uid == userId || 
-        (request.auth.token.keys().contains('email') && request.auth.token.email == "universeyb@gmail.com")
+        request.auth.token.email == "universeyb@gmail.com"
       );
       allow write: if isSignedIn() && (
         isOwner(userId) || 
-        (request.auth.token.keys().contains('email') && request.auth.token.email == "universeyb@gmail.com")
+        request.auth.token.email == "universeyb@gmail.com"
       );
     }
   }

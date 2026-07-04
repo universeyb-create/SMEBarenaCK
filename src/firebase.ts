@@ -38,6 +38,53 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 // Test Firestore Connection as required by firebase-integration skill
 async function testConnection() {
   try {
@@ -77,37 +124,52 @@ export async function saveDrawHistory(
   teams: { id: number; name: string; tier1: string; tier2: string; tier3: string }[],
   title?: string
 ) {
-  const drawDoc = doc(db, 'draw_histories', id);
-  const data = {
-    id,
-    userId,
-    createdAt: new Date().toISOString(),
-    method,
-    teams,
-    title: title || `${new Date().toLocaleDateString('ko-KR')} 아레나 CK 추첨`
-  };
-  await setDoc(drawDoc, data);
-  return data;
+  try {
+    const drawDoc = doc(db, 'draw_histories', id);
+    const data = {
+      id,
+      userId,
+      createdAt: new Date().toISOString(),
+      method,
+      teams,
+      title: title || `${new Date().toLocaleDateString('ko-KR')} 아레나 CK 추첨`
+    };
+    await setDoc(drawDoc, data);
+    return data;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `draw_histories/${id}`);
+    throw error;
+  }
 }
 
 export async function getDrawHistory(id: string) {
-  const drawDoc = doc(db, 'draw_histories', id);
-  const snap = await getDoc(drawDoc);
-  if (snap.exists()) {
-    return snap.data();
+  try {
+    const drawDoc = doc(db, 'draw_histories', id);
+    const snap = await getDoc(drawDoc);
+    if (snap.exists()) {
+      return snap.data();
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `draw_histories/${id}`);
+    throw error;
   }
-  return null;
 }
 
 export async function listDrawHistories(maxCount = 20) {
-  const historiesCol = collection(db, 'draw_histories');
-  const q = query(historiesCol, orderBy('createdAt', 'desc'), limit(maxCount));
-  const querySnapshot = await getDocs(q);
-  const results: any[] = [];
-  querySnapshot.forEach((doc) => {
-    results.push(doc.data());
-  });
-  return results;
+  try {
+    const historiesCol = collection(db, 'draw_histories');
+    const q = query(historiesCol, orderBy('createdAt', 'desc'), limit(maxCount));
+    const querySnapshot = await getDocs(q);
+    const results: any[] = [];
+    querySnapshot.forEach((doc) => {
+      results.push(doc.data());
+    });
+    return results;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'draw_histories');
+    throw error;
+  }
 }
 
 export async function saveCustomParticipants(
@@ -116,28 +178,43 @@ export async function saveCustomParticipants(
   tier2: string[],
   tier3: string[]
 ) {
-  const customDoc = doc(db, 'custom_participants', userId);
-  await setDoc(customDoc, {
-    userId,
-    updatedAt: new Date().toISOString(),
-    tier1,
-    tier2,
-    tier3
-  });
+  try {
+    const customDoc = doc(db, 'custom_participants', userId);
+    await setDoc(customDoc, {
+      userId,
+      updatedAt: new Date().toISOString(),
+      tier1,
+      tier2,
+      tier3
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `custom_participants/${userId}`);
+    throw error;
+  }
 }
 
 export async function getCustomParticipants(userId: string) {
-  const customDoc = doc(db, 'custom_participants', userId);
-  const snap = await getDoc(customDoc);
-  if (snap.exists()) {
-    return snap.data();
+  try {
+    const customDoc = doc(db, 'custom_participants', userId);
+    const snap = await getDoc(customDoc);
+    if (snap.exists()) {
+      return snap.data();
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `custom_participants/${userId}`);
+    throw error;
   }
-  return null;
 }
 
 export async function deleteCustomParticipants(userId: string) {
-  const customDoc = doc(db, 'custom_participants', userId);
-  await deleteDoc(customDoc);
+  try {
+    const customDoc = doc(db, 'custom_participants', userId);
+    await deleteDoc(customDoc);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `custom_participants/${userId}`);
+    throw error;
+  }
 }
 
 // Access Requests Helpers for Permission-locked App
@@ -156,41 +233,61 @@ export async function submitAccessRequest(
   displayName: string,
   note: string
 ): Promise<AccessRequestData> {
-  const reqDoc = doc(db, 'access_requests', userId);
-  const data: AccessRequestData = {
-    userId,
-    email: email || '',
-    displayName: displayName || '사용자',
-    status: 'pending',
-    note: note || '',
-    requestedAt: new Date().toISOString()
-  };
-  await setDoc(reqDoc, data);
-  return data;
+  try {
+    const reqDoc = doc(db, 'access_requests', userId);
+    const data: AccessRequestData = {
+      userId,
+      email: email || '',
+      displayName: displayName || '사용자',
+      status: 'pending',
+      note: note || '',
+      requestedAt: new Date().toISOString()
+    };
+    await setDoc(reqDoc, data);
+    return data;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `access_requests/${userId}`);
+    throw error;
+  }
 }
 
 export async function getAccessRequest(userId: string): Promise<AccessRequestData | null> {
-  const reqDoc = doc(db, 'access_requests', userId);
-  const snap = await getDoc(reqDoc);
-  if (snap.exists()) {
-    return snap.data() as AccessRequestData;
+  try {
+    const reqDoc = doc(db, 'access_requests', userId);
+    const snap = await getDoc(reqDoc);
+    if (snap.exists()) {
+      return snap.data() as AccessRequestData;
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `access_requests/${userId}`);
+    throw error;
   }
-  return null;
 }
 
 export async function listAllAccessRequests(): Promise<AccessRequestData[]> {
-  const colRef = collection(db, 'access_requests');
-  const q = query(colRef, orderBy('requestedAt', 'desc'));
-  const snap = await getDocs(q);
-  const results: AccessRequestData[] = [];
-  snap.forEach((doc) => {
-    results.push(doc.data() as AccessRequestData);
-  });
-  return results;
+  try {
+    const colRef = collection(db, 'access_requests');
+    const q = query(colRef, orderBy('requestedAt', 'desc'));
+    const snap = await getDocs(q);
+    const results: AccessRequestData[] = [];
+    snap.forEach((doc) => {
+      results.push(doc.data() as AccessRequestData);
+    });
+    return results;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'access_requests');
+    throw error;
+  }
 }
 
 export async function updateAccessRequestStatus(userId: string, status: 'approved' | 'rejected') {
-  const reqDoc = doc(db, 'access_requests', userId);
-  await setDoc(reqDoc, { status }, { merge: true });
+  try {
+    const reqDoc = doc(db, 'access_requests', userId);
+    await setDoc(reqDoc, { status }, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `access_requests/${userId}`);
+    throw error;
+  }
 }
 
