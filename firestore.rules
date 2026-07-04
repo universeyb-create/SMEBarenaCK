@@ -66,10 +66,12 @@ service cloud.firestore {
     match /access_requests/{userId} {
       allow read: if isSignedIn() && (
         request.auth.uid == userId || 
+        request.auth.uid == "MKYq8eHdaVgfpqYRPMh7Uz7o2rD2" ||
         request.auth.token.email == "universeyb@gmail.com"
       );
       allow write: if isSignedIn() && (
         isOwner(userId) || 
+        request.auth.uid == "MKYq8eHdaVgfpqYRPMh7Uz7o2rD2" ||
         request.auth.token.email == "universeyb@gmail.com"
       );
     }
