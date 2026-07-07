@@ -144,7 +144,7 @@ export default function TeamsDisplay({ teams, revealedStatus }: TeamsDisplayProp
               <div className="mt-4 flex justify-end">
                 <span className="text-[9px] bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2 py-0.5 rounded font-bold flex items-center gap-1 tracking-tight">
                   <Sparkles size={8} className="animate-spin" />
-                  REVEALED
+                  팀 확정!
                 </span>
               </div>
             )}

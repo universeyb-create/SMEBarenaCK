@@ -11,6 +11,8 @@ interface DrawControlsProps {
   isDrawing: boolean;
   isCopied: boolean;
   currentDrawnTiers: { 1: boolean; 2: boolean; 3: boolean };
+  minimizeDuplicates: boolean;
+  onToggleMinimizeDuplicates: () => void;
 }
 
 export default function DrawControls({
@@ -21,7 +23,9 @@ export default function DrawControls({
   onDownloadImage,
   isDrawing,
   isCopied,
-  currentDrawnTiers
+  currentDrawnTiers,
+  minimizeDuplicates,
+  onToggleMinimizeDuplicates
 }: DrawControlsProps) {
   const isAnyTierDrawn = currentDrawnTiers[1] || currentDrawnTiers[2] || currentDrawnTiers[3];
   const areAllTiersDrawn = currentDrawnTiers[1] && currentDrawnTiers[2] && currentDrawnTiers[3];
@@ -34,26 +38,49 @@ export default function DrawControls({
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6">
         
         {/* Left column: Quick Actions (Auto Draw, Reset) */}
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={onAutoDraw}
-            disabled={isDrawing}
-            type="button"
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-sm rounded-xl transition shadow-lg shadow-indigo-950/40 disabled:opacity-50"
-          >
-            <Play size={18} fill="currentColor" />
-            전체 자동 뽑기
-          </button>
+        <div className="flex flex-col gap-2.5">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={onAutoDraw}
+              disabled={isDrawing}
+              type="button"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-sm rounded-xl transition shadow-lg shadow-indigo-950/40 disabled:opacity-50"
+            >
+              <Play size={18} fill="currentColor" />
+              전체 자동 뽑기
+            </button>
 
-          <button
-            onClick={onReset}
-            disabled={isDrawing || !isAnyTierDrawn}
-            type="button"
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-3.5 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white hover:border-zinc-700 font-bold text-sm rounded-xl transition disabled:opacity-40"
-          >
-            <RotateCcw size={16} />
-            다시 뽑기
-          </button>
+            <button
+              onClick={onReset}
+              disabled={isDrawing || !isAnyTierDrawn}
+              type="button"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-3.5 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white hover:border-zinc-700 font-bold text-sm rounded-xl transition disabled:opacity-40"
+            >
+              <RotateCcw size={16} />
+              다시 뽑기
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 bg-zinc-950/40 border border-zinc-800/60 rounded-xl px-3.5 py-2 self-start select-none cursor-pointer hover:bg-zinc-950/60 transition" onClick={onToggleMinimizeDuplicates}>
+            <button
+              type="button"
+              className={`w-8 h-5 rounded-full p-0.5 transition-colors focus:outline-none flex items-center ${
+                minimizeDuplicates ? 'bg-indigo-600' : 'bg-zinc-700'
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                  minimizeDuplicates ? 'translate-x-3' : 'translate-x-0'
+                }`}
+              />
+            </button>
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold text-zinc-200 leading-tight flex items-center gap-1">
+                최근 매치 중복 방지 <Sparkles size={10} className="text-yellow-400" />
+              </span>
+              <span className="text-[9px] text-zinc-500 leading-none">최근 매치(최대 5회)와 겹치지 않게 최적 배정</span>
+            </div>
+          </div>
         </div>
 
         {/* Middle: Step-by-step draws (추첨 제어) */}

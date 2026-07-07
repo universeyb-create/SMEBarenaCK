@@ -82,6 +82,118 @@ function shuffleArray<T>(array: T[]): T[] {
   return arr;
 }
 
+// Helper to extract teammate pairings from both the local session's last draw and the top 5 historical draws
+function getTeammatePairsFromRecentAndHistory(
+  localLastDraw: Team[],
+  history: any[],
+  limitCount = 5
+): Set<string> {
+  const pairs = new Set<string>();
+  
+  // 1. Process local last completed draw if present
+  if (localLastDraw && localLastDraw.length > 0) {
+    localLastDraw.forEach(t => {
+      const p1 = t.players[1];
+      const p2 = t.players[2];
+      const p3 = t.players[3];
+      if (p1 && p2) {
+        pairs.add(`${p1}_${p2}`);
+        pairs.add(`${p2}_${p1}`);
+      }
+      if (p1 && p3) {
+        pairs.add(`${p1}_${p3}`);
+        pairs.add(`${p3}_${p1}`);
+      }
+      if (p2 && p3) {
+        pairs.add(`${p2}_${p3}`);
+        pairs.add(`${p3}_${p2}`);
+      }
+    });
+  }
+
+  // 2. Process up to last 5 from history list
+  if (history && Array.isArray(history)) {
+    const recentDraws = history.slice(0, limitCount);
+    recentDraws.forEach(draw => {
+      if (!draw.teams || !Array.isArray(draw.teams)) return;
+      draw.teams.forEach((t: any) => {
+        const p1 = t.tier1;
+        const p2 = t.tier2;
+        const p3 = t.tier3;
+        if (p1 && p2) {
+          pairs.add(`${p1}_${p2}`);
+          pairs.add(`${p2}_${p1}`);
+        }
+        if (p1 && p3) {
+          pairs.add(`${p1}_${p3}`);
+          pairs.add(`${p3}_${p1}`);
+        }
+        if (p2 && p3) {
+          pairs.add(`${p2}_${p3}`);
+          pairs.add(`${p3}_${p2}`);
+        }
+      });
+    });
+  }
+
+  return pairs;
+}
+
+// Helper to count how many pairs in candidate teams are already present in prevPairs
+function calculateConflictScore(candidateTeams: Team[], prevPairs: Set<string>): number {
+  let score = 0;
+  candidateTeams.forEach(t => {
+    const p1 = t.players[1];
+    const p2 = t.players[2];
+    const p3 = t.players[3];
+    if (p1 && p2 && prevPairs.has(`${p1}_${p2}`)) score++;
+    if (p1 && p3 && prevPairs.has(`${p1}_${p3}`)) score++;
+    if (p2 && p3 && prevPairs.has(`${p2}_${p3}`)) score++;
+  });
+  return score;
+}
+
+// Helper to generate a shuffle for a given tier that minimizes teammate duplicate pairings with the previous round
+function getOptimizedShuffle(
+  playersToShuffle: string[],
+  currentTeams: Team[],
+  tierNum: 1 | 2 | 3,
+  prevPairs: Set<string>,
+  enabled: boolean
+): string[] {
+  const baseShuffled = shuffleArray(playersToShuffle);
+  if (!enabled || prevPairs.size === 0) {
+    return baseShuffled;
+  }
+
+  let shadowTeams = currentTeams.map(t => ({ ...t, players: { ...t.players } }));
+  let bestShuffle = baseShuffled;
+  let minConflicts = Infinity;
+
+  // We evaluate 150 random shuffles and pick the one with the lowest overlap/conflict score.
+  // With 6 players/6 teams, 150 attempts is extremely fast (less than 1ms) and highly likely
+  // to find a completely conflict-free assignment (conflicts === 0) if one exists.
+  for (let attempt = 0; attempt < 150; attempt++) {
+    const candidateShuffle = shuffleArray(playersToShuffle);
+    
+    // Create candidate teams with this shuffle for scoring
+    for (let i = 0; i < shadowTeams.length; i++) {
+      shadowTeams[i].players[tierNum] = candidateShuffle[i] || '';
+    }
+
+    const conflicts = calculateConflictScore(shadowTeams, prevPairs);
+    if (conflicts < minConflicts) {
+      minConflicts = conflicts;
+      bestShuffle = [...candidateShuffle];
+      if (minConflicts === 0) {
+        break; // Found a perfect conflict-free shuffle
+      }
+    }
+  }
+
+  return bestShuffle;
+}
+
 export default function App() {
   // Authentication & Users
   const [user, setUser] = useState<User | null>(null);
@@ -109,6 +221,23 @@ export default function App() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawMethod, setDrawMethod] = useState<'auto' | 'step'>('auto');
   const [currentDrawnTiers, setCurrentDrawnTiers] = useState({ 1: false, 2: false, 3: false });
+  const [minimizeDuplicates, setMinimizeDuplicates] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('arena_minimize_duplicates');
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch {
+      return true;
+    }
+  });
+  const [lastCompletedDraw, setLastCompletedDraw] = useState<Team[]>([]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('arena_minimize_duplicates', JSON.stringify(minimizeDuplicates));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [minimizeDuplicates]);
 
   // OBS overlays and views
   const [isObsMode, setIsObsMode] = useState(false);
@@ -420,17 +549,28 @@ export default function App() {
   const handleAutoDraw = async () => {
     if (isDrawing) return;
 
-    // Shuffle arrays
-    const s1 = shuffleArray<string>(players.tier1);
-    const s2 = shuffleArray<string>(players.tier2);
-    const s3 = shuffleArray<string>(players.tier3);
+    const prevPairs = getTeammatePairsFromRecentAndHistory(lastCompletedDraw, historyList);
 
+    // Shuffle arrays with duplicate minimizing logic sequentially
+    // Tier 1: standard shuffle as base
+    const s1 = shuffleArray<string>(players.tier1);
+    
     // Prepare fresh drawing state
     const teamCount = Math.max(players.tier1.length, players.tier2.length, players.tier3.length);
     const newTeams = createEmptyTeams(teamCount);
     for (let i = 0; i < teamCount; i++) {
       newTeams[i].players[1] = s1[i] || '';
+    }
+
+    // Tier 2: optimized based on Tier 1
+    const s2 = getOptimizedShuffle(players.tier2, newTeams, 2, prevPairs, minimizeDuplicates);
+    for (let i = 0; i < teamCount; i++) {
       newTeams[i].players[2] = s2[i] || '';
+    }
+
+    // Tier 3: optimized based on Tier 1 + Tier 2
+    const s3 = getOptimizedShuffle(players.tier3, newTeams, 3, prevPairs, minimizeDuplicates);
+    for (let i = 0; i < teamCount; i++) {
       newTeams[i].players[3] = s3[i] || '';
     }
 
@@ -477,7 +617,6 @@ export default function App() {
     if (isDrawing || currentDrawnTiers[tierNum]) return;
 
     const currentTierPlayers = players[`tier${tierNum}`];
-    const shuffled = shuffleArray<string>(currentTierPlayers);
 
     // Deep copy teams to avoid direct state mutation
     const updatedTeams = teams.map(team => ({
@@ -486,6 +625,10 @@ export default function App() {
         ...team.players
       }
     }));
+
+    // Find the optimized shuffle for this tier
+    const prevPairs = getTeammatePairsFromRecentAndHistory(lastCompletedDraw, historyList);
+    const shuffled = getOptimizedShuffle(currentTierPlayers, updatedTeams, tierNum, prevPairs, minimizeDuplicates);
 
     const teamCount = teams.length;
 
@@ -533,6 +676,7 @@ export default function App() {
 
   // Helper to save draw history
   const saveCompletedDraw = async (completedTeams: Team[], method: 'auto' | 'step') => {
+    setLastCompletedDraw(completedTeams);
     const creatorId = user ? user.uid : 'guest';
     const drawId = `draw_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     
@@ -950,6 +1094,8 @@ export default function App() {
                 isDrawing={isDrawing}
                 isCopied={isCopied}
                 currentDrawnTiers={currentDrawnTiers}
+                minimizeDuplicates={minimizeDuplicates}
+                onToggleMinimizeDuplicates={() => setMinimizeDuplicates(prev => !prev)}
               />
 
               {/* Bento Grid layout */}
